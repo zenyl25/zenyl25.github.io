@@ -1,0 +1,17 @@
+{
+  "name": "SmartMixer",
+  "short_name": "SmartMixer",
+  "description": "AI-powered IoT stand mixer controller",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0a0a",
+  "theme_color": "#ff6b35",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' rx='32' fill='%23ff6b35'/><text y='130' x='30' font-size='120' font-family='serif'>🥣</text></svg>",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    }
+  ]
+}
