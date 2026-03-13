@@ -588,6 +588,40 @@
     ::-webkit-scrollbar { width: 4px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       MANUAL MODE SCREEN
+    ══════════════════════════════════════════════════════════════════════ */
+    .manual-screen { display: flex; flex-direction: column; gap: 16px; }
+    .manual-header { display: flex; align-items: center; gap: 14px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
+    .manual-header h2 { font-size: 24px; font-weight: 800; flex: 1; }
+    .manual-tag { padding: 4px 12px; border-radius: 100px; background: rgba(255,209,102,0.15); color: var(--accent2); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; }
+    .manual-weight-card { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 28px 24px; display: flex; flex-direction: column; align-items: center; gap: 6px; position: relative; overflow: hidden; }
+    .manual-weight-card::before { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 0%, rgba(255,107,53,0.08) 0%, transparent 70%); pointer-events: none; }
+    .manual-weight-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; font-family: var(--mono); }
+    .manual-weight-value { font-size: 80px; font-weight: 800; font-family: var(--mono); line-height: 1; background: linear-gradient(135deg, var(--text), var(--accent)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .manual-weight-unit { font-size: 20px; color: var(--muted); font-family: var(--mono); margin-top: -4px; }
+    .manual-tare-btn { margin-top: 8px; padding: 8px 20px; border-radius: 100px; background: var(--surface2); border: 1px solid var(--border); color: var(--muted); font-size: 12px; font-weight: 700; font-family: var(--mono); transition: color 0.2s, border-color 0.2s; }
+    .manual-tare-btn:hover { color: var(--text); border-color: var(--accent); }
+    .manual-servo-card { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 24px; display: flex; flex-direction: column; gap: 18px; }
+    .manual-servo-title { font-size: 13px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; font-family: var(--mono); }
+    .servo-dial-wrap { display: flex; justify-content: center; }
+    .servo-dial { position: relative; width: 160px; height: 160px; }
+    .servo-dial svg { width: 100%; height: 100%; }
+    .servo-dial-value { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .servo-dial-value span { font-size: 36px; font-weight: 800; font-family: var(--mono); line-height: 1; }
+    .servo-dial-value small { font-size: 12px; color: var(--muted); font-family: var(--mono); }
+    .manual-speed-row { display: flex; align-items: center; gap: 12px; }
+    .manual-speed-row .speed-slider { flex: 1; }
+    .speed-val { font-size: 14px; font-weight: 700; font-family: var(--mono); color: var(--accent); min-width: 36px; text-align: right; }
+    .direction-toggle { display: flex; gap: 8px; }
+    .dir-btn { flex: 1; padding: 12px; border-radius: 12px; background: var(--surface2); border: 1px solid var(--border); color: var(--muted); font-size: 13px; font-weight: 700; transition: all 0.2s; }
+    .dir-btn.active { background: rgba(255,107,53,0.15); border-color: var(--accent); color: var(--accent); }
+    .servo-btn-row { display: flex; gap: 10px; }
+    .servo-btn-row .btn { flex: 1; }
+    .manual-status { display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 13px; font-family: var(--mono); color: var(--muted); }
+    .manual-status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); transition: background 0.3s; }
+    .manual-status-dot.running { background: var(--ok); animation: dotPulse 1s infinite; }
   </style>
 </head>
 <body>
@@ -768,7 +802,7 @@ function recommendRecipes(bmi) {
 
 // ─── State ───────────────────────────────────────────────────────────────────
 const state = {
-  screen: 'splash',       // splash | bmi | recipes | cook | mixing
+  screen: 'splash',       // splash | bmi | recipes | cook | mixing | manual
   bmi: null,
   recipe: null,
   stageIdx: 0,
@@ -784,6 +818,7 @@ const state = {
   cookTimer: null,
   cookTimeLeft: 0,
   cameraVerified: false,
+  manualDirection: 'fwd', // 'fwd' | 'rev'
 };
 
 // ─── Connection Helpers ──────────────────────────────────────────────────────
@@ -931,6 +966,7 @@ function render() {
     case 'recipes': app.innerHTML = recipesHTML();  break;
     case 'cook':    renderCookScreen();             break;
     case 'mixing':  renderMixingScreen();           break;
+    case 'manual':  renderManualScreen();            break;
   }
   attachEventListeners();
 }
@@ -964,6 +1000,9 @@ function splashHTML() {
           <span class="ble-icon">⬡</span> Connect via Bluetooth
         </button>
         <button class="btn btn-ghost" id="btn-skip">Continue without mixer (demo)</button>
+        <div class="divider"><span>or</span></div>
+        <button class="btn btn-secondary full-width" id="btn-manual">⚙️ Manual Mode</button>
+
       </div>
 
       <div id="conn-badge" class="conn-badge hidden"></div>
@@ -1156,6 +1195,73 @@ function mixingHTML() {
   </div>`;
 }
 
+
+function manualHTML() {
+  const running = state.mixerStatus === 'mixing';
+  const spd     = state.mixerSpeed || 0;
+  const dialPct = spd / 100;
+  const dialDash = dialPct * 251.2;
+  return `
+  <div class="screen manual-screen">
+    <div class="manual-header">
+      <button class="back-btn" id="btn-back">←</button>
+      <h2>Manual Mode</h2>
+      <span class="manual-tag">Direct Control</span>
+    </div>
+
+    <!-- Live Weight -->
+    <div class="manual-weight-card">
+      <span class="manual-weight-label">Live Weight</span>
+      <span class="manual-weight-value" id="manual-weight-display">${state.currentWeight.toFixed(1)}</span>
+      <span class="manual-weight-unit">grams</span>
+      <button class="manual-tare-btn" id="btn-manual-tare">⟳ Tare / Zero</button>
+    </div>
+
+    <!-- Servo Control -->
+    <div class="manual-servo-card">
+      <span class="manual-servo-title">⚙️ Servo Control</span>
+
+      <div class="servo-dial-wrap">
+        <div class="servo-dial">
+          <svg viewBox="0 0 100 100">
+            <circle cx="50" cy="50" r="40" fill="none" stroke="#222" stroke-width="8"/>
+            <circle cx="50" cy="50" r="40" fill="none"
+              stroke="${running ? 'var(--ok)' : 'var(--accent)'}" stroke-width="8"
+              stroke-dasharray="${dialDash} 251.2"
+              stroke-dashoffset="62.8" stroke-linecap="round"
+              id="manual-dial-arc" style="transform:rotate(-90deg);transform-origin:50% 50%;transition:stroke-dasharray 0.3s"/>
+          </svg>
+          <div class="servo-dial-value">
+            <span id="manual-speed-display">${spd}</span>
+            <small>% speed</small>
+          </div>
+        </div>
+      </div>
+
+      <div class="manual-speed-row">
+        <span style="font-size:12px;color:var(--muted);font-family:var(--mono)">0</span>
+        <input type="range" id="manual-speed-slider" min="0" max="100" value="${spd}" class="speed-slider"/>
+        <span style="font-size:12px;color:var(--muted);font-family:var(--mono)">100</span>
+      </div>
+
+      <div class="direction-toggle">
+        <button class="dir-btn ${state.manualDirection === 'fwd' ? 'active' : ''}" id="btn-dir-fwd">▶ Forward</button>
+        <button class="dir-btn ${state.manualDirection === 'rev' ? 'active' : ''}" id="btn-dir-rev">◀ Reverse</button>
+      </div>
+
+      <div class="servo-btn-row">
+        <button class="btn btn-primary" id="btn-manual-start">▶ Start</button>
+        <button class="btn btn-danger"  id="btn-manual-stop">⏹ Stop</button>
+      </div>
+
+      <div class="manual-status">
+        <div class="manual-status-dot ${running ? 'running' : ''}" id="manual-status-dot"></div>
+        <span id="manual-status-text">${running ? 'Running at ' + spd + '%' : 'Stopped'}</span>
+      </div>
+    </div>
+  </div>`;
+}
+
 function finishedHTML() {
   return `
   <div class="screen finished-screen">
@@ -1178,6 +1284,16 @@ function renderCookScreen() {
   runAIVerification();
 }
 
+
+function renderManualScreen() {
+  document.getElementById('app').innerHTML = manualHTML();
+  attachEventListeners();
+  // Keep updating weight live
+  state._manualWeightInterval = setInterval(() => {
+    const el  = document.getElementById('manual-weight-display');
+    if (el) el.textContent = state.currentWeight.toFixed(1);
+  }, 200);
+}
 function renderMixingScreen() {
   document.getElementById('app').innerHTML = mixingHTML();
   attachEventListeners();
@@ -1254,6 +1370,59 @@ function formatTime(s) {
 
 // ─── Event Listeners ──────────────────────────────────────────────────────────
 function attachEventListeners() {
+
+  on('btn-manual', 'click', () => { state.screen = 'manual'; render(); });
+
+  on('btn-manual-tare', 'click', () => {
+    sendCommand({ cmd: 'tare' });
+    toast('Scale tared');
+  });
+
+  on('manual-speed-slider', 'input', e => {
+    const spd = parseInt(e.target.value);
+    state.mixerSpeed = spd;
+    const disp = document.getElementById('manual-speed-display');
+    const arc  = document.getElementById('manual-dial-arc');
+    const stat = document.getElementById('manual-status-text');
+    if (disp) disp.textContent = spd;
+    if (arc)  arc.setAttribute('stroke-dasharray', `${(spd/100)*251.2} 251.2`);
+    if (stat && state.mixerStatus === 'mixing') stat.textContent = `Running at ${spd}%`;
+    if (state.mixerStatus === 'mixing') sendCommand({ cmd: 'setSpeed', speed: spd });
+  });
+
+  on('btn-dir-fwd', 'click', () => {
+    state.manualDirection = 'fwd';
+    document.getElementById('btn-dir-fwd')?.classList.add('active');
+    document.getElementById('btn-dir-rev')?.classList.remove('active');
+  });
+
+  on('btn-dir-rev', 'click', () => {
+    state.manualDirection = 'rev';
+    document.getElementById('btn-dir-rev')?.classList.add('active');
+    document.getElementById('btn-dir-fwd')?.classList.remove('active');
+  });
+
+  on('btn-manual-start', 'click', () => {
+    const spd = state.mixerSpeed || 50;
+    sendCommand({ cmd: 'start', speed: spd, direction: state.manualDirection });
+    state.mixerStatus = 'mixing';
+    const dot  = document.getElementById('manual-status-dot');
+    const stat = document.getElementById('manual-status-text');
+    if (dot)  dot.classList.add('running');
+    if (stat) stat.textContent = `Running at ${spd}%`;
+    toast('Mixer started');
+  });
+
+  on('btn-manual-stop', 'click', () => {
+    sendCommand({ cmd: 'stop' });
+    state.mixerStatus = 'idle';
+    const dot  = document.getElementById('manual-status-dot');
+    const stat = document.getElementById('manual-status-text');
+    if (dot)  dot.classList.remove('running');
+    if (stat) stat.textContent = 'Stopped';
+    toast('Mixer stopped');
+  });
+
   on('btn-ws', 'click', async () => {
     const ip = document.getElementById('ip-input')?.value?.trim();
     if (!ip) return toast('Enter an IP address');
@@ -1281,7 +1450,8 @@ function attachEventListeners() {
   on('btn-back', 'click', () => {
     stopCamera();
     if (state.cookTimer) clearInterval(state.cookTimer);
-    const prev = { bmi:'splash', recipes:'bmi', cook:'recipes', mixing:'cook' };
+    if (state._manualWeightInterval) { clearInterval(state._manualWeightInterval); state._manualWeightInterval = null; }
+    const prev = { bmi:'splash', recipes:'bmi', cook:'recipes', mixing:'cook', manual:'splash' };
     state.screen = prev[state.screen] || 'splash';
     if (state.screen === 'cook') { state.screen = 'recipes'; }
     render();
