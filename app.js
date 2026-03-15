@@ -1,8 +1,3 @@
-// ═══════════════════════════════════════════════════════════════════════════
-//  SmartMixer PWA – app.js
-// ═══════════════════════════════════════════════════════════════════════════
-
-// ─── Recipe Database ────────────────────────────────────────────────────────
 const RECIPES = [
   {
     id: 'vanilla_cake',
@@ -147,7 +142,6 @@ const RECIPES = [
   }
 ];
 
-// ─── BMI Recommendation Logic ────────────────────────────────────────────────
 function bmiCategory(bmi) {
   if (bmi < 18.5) return 'underweight';
   if (bmi < 25)   return 'normal';
@@ -171,9 +165,8 @@ function recommendRecipes(bmi) {
   });
 }
 
-// ─── State ───────────────────────────────────────────────────────────────────
 const state = {
-  screen: 'splash',       // splash | bmi | recipes | cook | mixing
+  screen: 'splash',       
   bmi: null,
   recipe: null,
   stageIdx: 0,
@@ -182,7 +175,7 @@ const state = {
   targetWeight: 0,
   mixerStatus: 'idle',
   mixerSpeed: 0,
-  connectionType: null,   // 'ws' | 'ble' | null
+  connectionType: null, 
   ws: null,
   bleChar: { notify: null, write: null },
   cameraStream: null,
@@ -254,7 +247,6 @@ function handleIncoming(raw) {
   } catch {}
 }
 
-// ─── Camera / AI Ingredient Check ────────────────────────────────────────────
 async function startCamera() {
   try {
     state.cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
@@ -278,7 +270,6 @@ function aiVerifyIngredient(expectedName) {
   });
 }
 
-// ─── Cooking Flow ─────────────────────────────────────────────────────────────
 function currentStage()      { return state.recipe.stages[state.stageIdx]; }
 function currentIngredient() { return currentStage().ingredients[state.ingredientIdx]; }
 
@@ -327,7 +318,6 @@ function showFinished() {
   document.getElementById('app').innerHTML = finishedHTML();
 }
 
-// ─── Render Functions ─────────────────────────────────────────────────────────
 function render() {
   const app = document.getElementById('app');
   switch (state.screen) {
@@ -340,7 +330,6 @@ function render() {
   attachEventListeners();
 }
 
-// ─── Screen HTMLs ─────────────────────────────────────────────────────────────
 function splashHTML() {
   return `
   <div class="screen splash-screen">
@@ -575,7 +564,6 @@ function finishedHTML() {
   </div>`;
 }
 
-// ─── Render helpers ───────────────────────────────────────────────────────────
 function renderCookScreen() {
   document.getElementById('app').innerHTML = cookHTML();
   attachEventListeners();
@@ -657,7 +645,6 @@ function formatTime(s) {
   return `${m}:${sec}`;
 }
 
-// ─── Event Listeners ──────────────────────────────────────────────────────────
 function attachEventListeners() {
   on('btn-ws', 'click', async () => {
     const ip = document.getElementById('ip-input')?.value?.trim();
@@ -763,7 +750,6 @@ function on(id, event, fn) {
   if (el) el.addEventListener(event, fn);
 }
 
-// ─── Toast ────────────────────────────────────────────────────────────────────
 function toast(msg, err = false) {
   let t = document.getElementById('toast');
   if (!t) { t = document.createElement('div'); t.id = 'toast'; document.body.appendChild(t); }
@@ -785,7 +771,6 @@ function hideLoader() {
   if (el) el.className = 'loader';
 }
 
-// ─── Boot ─────────────────────────────────────────────────────────────────────
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('./sw.js').catch(() => {});
 }
