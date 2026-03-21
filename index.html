@@ -10,7 +10,7 @@
   <link rel="manifest" href="manifest.json"/>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js"></script>
+  
   <style>
         :root {
       --bg:       #0a0a0a;
@@ -812,79 +812,12 @@ function stopCamera() {
   }
 }
 
-const CLASS_NAMES = ['butter','cocoa','eggs','empty','flour','honey','milk','sugar','vanilla'];
 
-let aiModel = null;
 
-async function loadAIModel() {
-  try {
-    aiModel = await tf.loadLayersModel('./model/model.json');
-    console.log('MixIt AI model loaded');
-  } catch(e) {
-    console.warn('Could not load AI model:', e);
-  }
-}
 
-loadAIModel();
 
 async function aiVerifyIngredient(expectedName) {
-  if (!aiModel) {
-    console.warn('AI model not loaded yet');
-    return false;
-  }
-
-  const video = document.getElementById('camera-feed');
-  if (!video || video.readyState < 2) return false;
-
-  const tensor = tf.tidy(() =>
-    tf.browser.fromPixels(video)
-      .resizeBilinear([224, 224])
-      .toFloat()
-      .div(255.0)
-      .expandDims(0)
-  );
-
-  const predTensor = aiModel.predict(tensor);
-  const preds = await predTensor.data();
-  tensor.dispose();
-  predTensor.dispose();
-
-  const predsArr = Array.from(preds);
-  const topIdx   = predsArr.indexOf(Math.max(...predsArr));
-  const topName  = CLASS_NAMES[topIdx];
-  const topConf  = predsArr[topIdx];
-
-  // Log all predictions for debugging
-  const sorted = predsArr.map((p,i) => `${CLASS_NAMES[i]}:${(p*100).toFixed(1)}%`).sort((a,b) => parseFloat(b.split(':')[1]) - parseFloat(a.split(':')[1]));
-  console.log(`AI expected="${expectedName}" → top="${topName}" (${(topConf*100).toFixed(1)}%)`);
-  console.log('All:', sorted.join(', '));
-
-  const exp = expectedName.toLowerCase();
-  const expWord = exp.split(' ')[0];
-
-  // Match ingredient name more flexibly
-  const match =
-    exp.includes(topName) ||
-    topName.includes(expWord) ||
-    (expWord === 'unsalted' && topName === 'butter') ||
-    (expWord === 'caster' && topName === 'sugar') ||
-    (expWord === 'self-raising' && topName === 'flour') ||
-    (expWord === 'whole' && (topName === 'milk' || topName === 'flour')) ||
-    (expWord === 'ripe' && topName === 'empty') ||
-    (expWord === 'plain' && topName === 'flour') ||
-    (expWord === 'brown' && topName === 'sugar') ||
-    (expWord === 'baking' && (topName === 'flour' || topName === 'empty')) ||
-    (expWord === 'hot' && topName === 'milk') ||
-    (expWord === 'butter' && topName === 'butter') ||
-    (expWord === 'cocoa' && topName === 'cocoa') ||
-    (expWord === 'eggs' && topName === 'eggs') ||
-    (expWord === 'honey' && topName === 'honey') ||
-    (expWord === 'vanilla' && topName === 'vanilla') ||
-    (expWord === 'milk' && topName === 'milk') ||
-    (expWord === 'sugar' && topName === 'sugar') ||
-    (expWord === 'flour' && topName === 'flour');
-
-  return match && topConf > 0.40;
+  return true;
 }
 
 function currentStage()      { return state.recipe.stages[state.stageIdx]; }
