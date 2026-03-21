@@ -1,0 +1,1510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+  <meta name="theme-color" content="#0a0a0a"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <title>MixIt</title>
+  <link rel="manifest" href="manifest.json"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.10.0/dist/tf.min.js"></script>
+  <style>
+        :root {
+      --bg:       #0a0a0a;
+      --surface:  #141414;
+      --surface2: #1e1e1e;
+      --border:   #2a2a2a;
+      --accent:   #ff6b35;
+      --accent2:  #ffd166;
+      --ok:       #06d6a0;
+      --fail:     #ef476f;
+      --text:     #f0ede8;
+      --muted:    #6b6460;
+      --font:     'Syne', sans-serif;
+      --mono:     'DM Mono', monospace;
+      --r:        16px;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bot: env(safe-area-inset-bottom, 0px);
+    }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: var(--font); -webkit-font-smoothing: antialiased; }
+    input, select, button { font-family: inherit; }
+    button { cursor: pointer; border: none; background: none; }
+
+        #app {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      position: relative;
+    }
+
+        .screen {
+      width: 100%;
+      height: 100%;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding: calc(var(--safe-top) + 20px) 20px calc(var(--safe-bot) + 20px);
+      animation: fadeUp 0.4s ease both;
+    }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(24px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+        .btn {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 14px 24px;
+      border-radius: 12px;
+      font-weight: 700;
+      font-size: 15px;
+      transition: transform 0.15s, opacity 0.15s, box-shadow 0.15s;
+      user-select: none;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn:disabled { opacity: 0.4; pointer-events: none; }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #0a0a0a;
+      box-shadow: 0 4px 20px rgba(255,107,53,0.35);
+    }
+    .btn-primary:hover { box-shadow: 0 6px 28px rgba(255,107,53,0.55); }
+    .btn-primary.ready { background: var(--ok); box-shadow: 0 4px 20px rgba(6,214,160,0.4); }
+
+    .btn-secondary {
+      background: var(--surface2);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .btn-ghost {
+      background: transparent;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .btn-ghost:hover { color: var(--text); }
+    .btn-danger {
+      background: var(--fail);
+      color: #fff;
+      box-shadow: 0 4px 20px rgba(239,71,111,0.35);
+    }
+
+    .full-width { width: 100%; }
+
+        .back-btn {
+      width: 40px; height: 40px;
+      border-radius: 50%;
+      background: var(--surface2);
+      color: var(--text);
+      font-size: 18px;
+      display: flex; align-items: center; justify-content: center;
+      border: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+        .splash-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100%; }
+
+    .splash-bg {
+      position: fixed; inset: 0; z-index: -1;
+      background: radial-gradient(ellipse at 50% 30%, rgba(255,107,53,0.15) 0%, transparent 65%),
+                  radial-gradient(ellipse at 80% 80%, rgba(255,209,102,0.08) 0%, transparent 55%);
+    }
+
+    .splash-content { width: 100%; max-width: 420px; display: flex; flex-direction: column; align-items: center; gap: 16px; }
+
+    .logo-ring { width: 120px; height: 120px; margin-bottom: 8px; }
+    .logo-svg { width: 100%; height: 100%; }
+    .spin-slow { animation: rotateSlow 20s linear infinite; transform-origin: center; }
+    @keyframes rotateSlow { to { transform: rotate(360deg); } }
+
+    .brand {
+      font-size: 42px;
+      font-weight: 800;
+      letter-spacing: -1px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .tagline { color: var(--muted); font-size: 15px; letter-spacing: 0.3px; }
+
+    .connect-card {
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-top: 8px;
+    }
+
+    .connect-label { font-size: 13px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+
+    .connect-row { display: flex; gap: 10px; align-items: flex-end; }
+    .input-group { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+    .input-group label { font-size: 12px; color: var(--muted); font-family: var(--mono); }
+
+    input[type=text], input[type=number], select {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      padding: 12px 14px;
+      font-size: 14px;
+      font-family: var(--mono);
+      width: 100%;
+      transition: border-color 0.2s;
+    }
+    input:focus, select:focus { outline: none; border-color: var(--accent); }
+    select option { background: var(--surface2); }
+
+    .divider { display: flex; align-items: center; gap: 12px; color: var(--muted); font-size: 12px; }
+    .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+    .ble-icon { font-size: 18px; }
+
+    .conn-badge {
+      padding: 8px 16px;
+      border-radius: 100px;
+      font-size: 13px;
+      font-weight: 700;
+      background: rgba(6,214,160,0.1);
+      color: var(--ok);
+      border: 1px solid rgba(6,214,160,0.3);
+    }
+    .conn-badge.hidden { display: none; }
+
+        .bmi-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100%; }
+
+    .bmi-deco {
+      position: fixed; inset: 0; z-index: -1;
+      background: repeating-linear-gradient(
+        45deg,
+        transparent,
+        transparent 40px,
+        rgba(255,107,53,0.03) 40px,
+        rgba(255,107,53,0.03) 41px
+      );
+    }
+
+    .form-panel {
+      width: 100%; max-width: 420px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 28px 24px;
+      display: flex; flex-direction: column; gap: 16px;
+      position: relative;
+    }
+
+    .form-panel h2 { font-size: 26px; font-weight: 800; }
+    .form-panel .sub { color: var(--muted); font-size: 14px; margin-top: -8px; }
+
+    .bmi-fields { display: flex; flex-direction: column; gap: 14px; }
+    .field-row { display: flex; gap: 12px; }
+    .field { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+    .field label { font-size: 12px; color: var(--muted); font-family: var(--mono); }
+
+    .bmi-result {
+      padding: 12px 16px;
+      border-radius: 12px;
+      font-size: 14px;
+      border: 1px solid var(--border);
+      display: none;
+    }
+    .bmi-result.show { display: block; }
+    .bmi-result.cat-underweight { background: rgba(255,209,102,0.1); border-color: var(--accent2); }
+    .bmi-result.cat-normal      { background: rgba(6,214,160,0.1);   border-color: var(--ok); }
+    .bmi-result.cat-overweight  { background: rgba(255,107,53,0.1);  border-color: var(--accent); }
+    .bmi-result.cat-obese       { background: rgba(239,71,111,0.1);  border-color: var(--fail); }
+
+        .recipes-screen { padding-top: calc(var(--safe-top) + 16px); }
+
+    .recipes-header {
+      display: flex; align-items: center; gap: 14px;
+      margin-bottom: 20px; padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .recipes-header h2 { font-size: 24px; font-weight: 800; flex: 1; }
+
+    .bmi-tag {
+      padding: 4px 12px;
+      border-radius: 100px;
+      background: rgba(255,107,53,0.15);
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+    }
+
+    .recipe-grid { display: flex; flex-direction: column; gap: 14px; }
+
+    .recipe-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 18px;
+      display: grid;
+      grid-template-columns: 52px 1fr auto;
+      grid-template-rows: auto auto;
+      gap: 4px 14px;
+      align-items: start;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+    .recipe-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+
+    .recipe-emoji { font-size: 36px; grid-row: 1/3; display: flex; align-items: center; }
+    .recipe-info h3 { font-size: 17px; font-weight: 700; }
+    .recipe-info p  { font-size: 12px; color: var(--muted); font-family: var(--mono); margin-top: 2px; }
+
+    .recipe-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+    .tag {
+      padding: 2px 8px;
+      border-radius: 100px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .recipe-stages {
+      font-size: 11px;
+      color: var(--muted);
+      font-family: var(--mono);
+      grid-column: 3;
+      grid-row: 1;
+      white-space: nowrap;
+    }
+
+    .recipe-btn { grid-column: 3; grid-row: 2; padding: 10px 16px; font-size: 13px; }
+
+        .cook-screen { padding: 0; display: flex; flex-direction: column; overflow: hidden; }
+
+    .cook-header {
+      display: flex; align-items: center; gap: 14px;
+      padding: calc(var(--safe-top) + 16px) 20px 16px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      flex-shrink: 0;
+    }
+    .cook-title h2 { font-size: 18px; font-weight: 800; }
+    .stage-label { font-size: 12px; color: var(--muted); font-family: var(--mono); }
+
+    .progress-bar {
+      height: 3px;
+      background: var(--border);
+      flex-shrink: 0;
+    }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      transition: width 0.5s ease;
+    }
+
+    .cook-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* Camera */
+    .camera-panel {
+      position: relative;
+      border-radius: 16px;
+      overflow: hidden;
+      background: #000;
+      aspect-ratio: 16/9;
+      flex-shrink: 0;
+      border: 1px solid var(--border);
+    }
+    #camera-feed {
+      width: 100%; height: 100%; object-fit: cover;
+      display: block;
+    }
+    .camera-overlay {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      background: rgba(0,0,0,0.5);
+    }
+    .scan-box {
+      width: 140px; height: 140px;
+      border: 2px solid var(--accent);
+      border-radius: 16px;
+      position: relative;
+      animation: scanPulse 1.5s ease-in-out infinite;
+    }
+    @keyframes scanPulse {
+      0%,100% { box-shadow: 0 0 0 0 rgba(255,107,53,0.4); }
+      50%      { box-shadow: 0 0 0 8px rgba(255,107,53,0); }
+    }
+    .scan-box::before, .scan-box::after,
+    .scan-box > span::before, .scan-box > span::after {
+      content: '';
+      position: absolute;
+      width: 16px; height: 16px;
+      border-color: var(--accent2);
+      border-style: solid;
+    }
+    .scan-box::before { top: -2px; left: -2px; border-width: 3px 0 0 3px; border-radius: 4px 0 0 0; }
+    .scan-box::after  { top: -2px; right: -2px; border-width: 3px 3px 0 0; border-radius: 0 4px 0 0; }
+
+    .scan-label {
+      margin-top: 16px;
+      color: #fff;
+      font-size: 13px;
+      font-weight: 700;
+      font-family: var(--mono);
+      letter-spacing: 0.5px;
+    }
+
+    .verify-badge {
+      position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
+      padding: 6px 14px;
+      border-radius: 100px;
+      font-size: 12px; font-weight: 700; font-family: var(--mono);
+      white-space: nowrap;
+    }
+    .verify-badge.ok   { background: rgba(6,214,160,0.9);  color: #000; }
+    .verify-badge.fail { background: rgba(239,71,111,0.9); color: #fff; }
+    .verify-badge.hidden { display: none; }
+
+    /* Ingredient panel */
+    .ingredient-panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 20px;
+      display: flex; flex-direction: column; gap: 14px;
+    }
+
+    .ingredient-color {
+      width: 100%; height: 6px;
+      border-radius: 3px;
+      margin-bottom: -6px;
+    }
+
+    .ingredient-details h3 { font-size: 20px; font-weight: 800; }
+    .ingredient-target { font-size: 14px; color: var(--muted); font-family: var(--mono); }
+
+    /* Gauge */
+    .weight-gauge { display: flex; justify-content: center; }
+    .gauge-ring { position: relative; width: 140px; height: 140px; }
+    .gauge-svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+    .gauge-arc { transition: stroke-dasharray 0.3s ease; }
+    .gauge-value {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+    }
+    .gauge-value span { font-size: 30px; font-weight: 700; font-family: var(--mono); line-height: 1; }
+    .gauge-value small { font-size: 14px; color: var(--muted); font-family: var(--mono); }
+
+    .ai-status {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 13px; color: var(--muted); font-family: var(--mono);
+    }
+    .ai-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--accent);
+    }
+    .ai-dot.pulse { animation: dotPulse 1s ease-in-out infinite; }
+    .ai-dot.ok   { background: var(--ok); animation: none; }
+    .ai-dot.fail { background: var(--fail); animation: none; }
+    @keyframes dotPulse { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+
+    /* Stage overview */
+    .stage-overview {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 16px 20px;
+    }
+    .stage-overview-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; font-family: var(--mono); }
+
+    .stage-ing {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 14px;
+      opacity: 0.4;
+      transition: opacity 0.3s;
+    }
+    .stage-ing:last-child { border-bottom: none; }
+    .stage-ing.done    { opacity: 0.3; text-decoration: line-through; }
+    .stage-ing.current { opacity: 1; font-weight: 700; }
+
+    .ing-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .ing-g { font-size: 12px; font-family: var(--mono); color: var(--muted); margin-left: auto; }
+
+        .mixing-screen { position: relative; display: flex; align-items: center; justify-content: center; }
+
+    .mixing-bg {
+      position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+      z-index: 0; overflow: hidden;
+    }
+    .orbit-ring {
+      position: absolute; border-radius: 50%;
+      border: 1px solid rgba(255,107,53,0.2);
+    }
+    .r1 { width: 200px; height: 200px; animation: orbit 4s linear infinite; }
+    .r2 { width: 340px; height: 340px; animation: orbit 7s linear infinite reverse; border-color: rgba(255,209,102,0.1); }
+    .r3 { width: 480px; height: 480px; animation: orbit 12s linear infinite; border-color: rgba(255,107,53,0.06); }
+    @keyframes orbit { to { transform: rotate(360deg); } }
+
+    .mixing-content {
+      position: relative; z-index: 1;
+      display: flex; flex-direction: column; align-items: center; gap: 20px;
+      text-align: center; padding: 40px 24px;
+    }
+
+    .mixing-icon { font-size: 56px; animation: spinIcon 2s linear infinite; }
+    @keyframes spinIcon { to { transform: rotate(360deg); } }
+
+    .mixing-content h2 { font-size: 32px; font-weight: 800; }
+    .mixing-stage { color: var(--muted); font-size: 14px; font-family: var(--mono); }
+
+    .timer-display {
+      font-size: 72px;
+      font-weight: 800;
+      font-family: var(--mono);
+      letter-spacing: -2px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      line-height: 1;
+    }
+
+    .speed-control { width: 100%; max-width: 280px; }
+    .speed-control p { font-size: 13px; color: var(--muted); font-family: var(--mono); margin-bottom: 10px; }
+
+    .speed-slider {
+      -webkit-appearance: none;
+      width: 100%; height: 6px;
+      border-radius: 3px;
+      background: var(--border);
+      outline: none;
+    }
+    .speed-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      background: var(--accent);
+      cursor: pointer;
+      box-shadow: 0 0 0 4px rgba(255,107,53,0.2);
+    }
+
+        .finished-screen { display: flex; align-items: center; justify-content: center; }
+
+    .confetti-bg {
+      position: fixed; inset: 0; z-index: -1;
+      background: radial-gradient(ellipse at 50% 50%, rgba(255,209,102,0.15) 0%, transparent 70%);
+      animation: confettiPulse 2s ease-in-out infinite;
+    }
+    @keyframes confettiPulse { 0%,100%{opacity:1;} 50%{opacity:0.5;} }
+
+    .finished-content {
+      text-align: center;
+      display: flex; flex-direction: column; align-items: center; gap: 16px;
+      max-width: 340px;
+    }
+    .finished-icon { font-size: 80px; animation: bounce 0.6s ease both; }
+    @keyframes bounce { 0%{transform:scale(0);} 70%{transform:scale(1.1);} 100%{transform:scale(1);} }
+    .finished-content h2 { font-size: 36px; font-weight: 800; }
+    .finished-content p  { color: var(--muted); font-size: 15px; line-height: 1.6; }
+    .tip {
+      font-family: var(--mono); font-size: 13px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 12px 16px; border-radius: 12px;
+    }
+
+        .toast {
+      position: fixed; bottom: calc(var(--safe-bot) + 80px); left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      padding: 12px 20px;
+      border-radius: 100px;
+      font-size: 13px; font-weight: 700;
+      z-index: 9999;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.3s, transform 0.3s;
+      white-space: nowrap;
+    }
+    .toast.toast-ok  { background: var(--ok);  color: #000; opacity: 1; transform: translateX(-50%) translateY(0); }
+    .toast.toast-err { background: var(--fail); color: #fff; opacity: 1; transform: translateX(-50%) translateY(0); }
+
+        .loader {
+      position: fixed; inset: 0; z-index: 9998;
+      background: rgba(10,10,10,0.8);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; font-weight: 700; letter-spacing: 0.5px;
+      opacity: 0; pointer-events: none; transition: opacity 0.3s;
+    }
+    .loader.show { opacity: 1; pointer-events: all; }
+    .loader::before {
+      content: '';
+      width: 32px; height: 32px; border-radius: 50%;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      animation: spin 0.8s linear infinite;
+      margin-right: 14px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+        ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+        .manual-screen { display: flex; flex-direction: column; gap: 16px; overflow-y: auto; }
+    .manual-header { display: flex; align-items: center; gap: 14px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
+    .manual-header h2 { font-size: 24px; font-weight: 800; flex: 1; }
+    .manual-tag { padding: 4px 12px; border-radius: 100px; background: rgba(255,209,102,0.15); color: var(--accent2); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; }
+    .manual-weight-card { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 28px 24px; display: flex; flex-direction: column; align-items: center; gap: 6px; position: relative; }
+    .manual-weight-card::before { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 0%, rgba(255,107,53,0.08) 0%, transparent 70%); pointer-events: none; }
+    .manual-weight-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; font-family: var(--mono); }
+    .manual-weight-value { font-size: 80px; font-weight: 800; font-family: var(--mono); line-height: 1; background: linear-gradient(135deg, var(--text), var(--accent)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .manual-weight-unit { font-size: 20px; color: var(--muted); font-family: var(--mono); margin-top: -4px; }
+    .manual-tare-btn { margin-top: 8px; padding: 8px 20px; border-radius: 100px; background: var(--surface2); border: 1px solid var(--border); color: var(--muted); font-size: 12px; font-weight: 700; font-family: var(--mono); transition: color 0.2s, border-color 0.2s; }
+    .manual-tare-btn:hover { color: var(--text); border-color: var(--accent); }
+    .manual-servo-card { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 24px; display: flex; flex-direction: column; gap: 18px; }
+    .manual-servo-title { font-size: 13px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; font-family: var(--mono); }
+    .servo-dial-wrap { display: flex; justify-content: center; }
+    .servo-dial { position: relative; width: 160px; height: 160px; }
+    .servo-dial svg { width: 100%; height: 100%; }
+    .servo-dial-value { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .servo-dial-value span { font-size: 36px; font-weight: 800; font-family: var(--mono); line-height: 1; }
+    .servo-dial-value small { font-size: 12px; color: var(--muted); font-family: var(--mono); }
+    .manual-speed-row { display: flex; align-items: center; gap: 12px; }
+    .manual-speed-row .speed-slider { flex: 1; }
+    .speed-val { font-size: 14px; font-weight: 700; font-family: var(--mono); color: var(--accent); min-width: 36px; text-align: right; }
+    .direction-toggle { display: flex; gap: 8px; }
+    .dir-btn { flex: 1; padding: 12px; border-radius: 12px; background: var(--surface2); border: 1px solid var(--border); color: var(--muted); font-size: 13px; font-weight: 700; transition: all 0.2s; }
+    .dir-btn.active { background: rgba(255,107,53,0.15); border-color: var(--accent); color: var(--accent); }
+    .servo-btn-row { display: flex; gap: 10px; }
+    .servo-btn-row .btn { flex: 1; }
+    .manual-status { display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 13px; font-family: var(--mono); color: var(--muted); }
+    .manual-status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); transition: background 0.3s; }
+    .manual-status-dot.running { background: var(--ok); animation: dotPulse 1s infinite; }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <script>
+//  MixIt PWA – app.js
+
+const RECIPES = [
+  {
+    id: 'vanilla_cake',
+    name: 'Vanilla Sponge',
+    emoji: '🎂',
+    tags: ['classic', 'low-fat'],
+    cal_per_slice: 280,
+    servings: 8,
+    stages: [
+      {
+        name: 'Cream butter & sugar',
+        speed: 60, duration: 120,
+        ingredients: [
+          { name: 'Unsalted Butter', grams: 50, color: '#f9d84b' },
+          { name: 'Caster Sugar',    grams: 50, color: '#fff8dc' }
+        ]
+      },
+      {
+        name: 'Add eggs & vanilla',
+        speed: 40, duration: 60,
+        ingredients: [
+          { name: 'Eggs (large)',    grams: 38, color: '#ffd59e' },
+          { name: 'Vanilla Extract', grams: 3,  color: '#8b4513' }
+        ]
+      },
+      {
+        name: 'Fold in flour & milk',
+        speed: 25, duration: 90,
+        ingredients: [
+          { name: 'Self-Raising Flour', grams: 50, color: '#f5f5dc' },
+          { name: 'Whole Milk',         grams: 15, color: '#fff' }
+        ]
+      }
+    ]
+  },
+  {
+    id: 'chocolate_cake',
+    name: 'Dark Chocolate Cake',
+    emoji: '🍫',
+    tags: ['indulgent'],
+    cal_per_slice: 420,
+    servings: 10,
+    stages: [
+      {
+        name: 'Mix dry ingredients',
+        speed: 30, duration: 60,
+        ingredients: [
+          { name: 'Plain Flour',    grams: 63, color: '#f5f5dc' },
+          { name: 'Cocoa Powder',   grams: 19, color: '#3d1a00' },
+          { name: 'Baking Powder',  grams: 3,  color: '#fff' },
+          { name: 'Salt',           grams: 2,  color: '#fff' }
+        ]
+      },
+      {
+        name: 'Cream wet ingredients',
+        speed: 70, duration: 120,
+        ingredients: [
+          { name: 'Butter',         grams: 44, color: '#f9d84b' },
+          { name: 'Brown Sugar',    grams: 88, color: '#c4882a' }
+        ]
+      },
+      {
+        name: 'Combine & beat',
+        speed: 50, duration: 90,
+        ingredients: [
+          { name: 'Eggs',           grams: 50, color: '#ffd59e' },
+          { name: 'Buttermilk',     grams: 60, color: '#fffdd0' },
+          { name: 'Hot Water',      grams: 60, color: '#add8e6' }
+        ]
+      }
+    ]
+  },
+  {
+    id: 'banana_bread',
+    name: 'Banana Bread',
+    emoji: '🍌',
+    tags: ['healthy', 'low-sugar'],
+    cal_per_slice: 195,
+    servings: 10,
+    stages: [
+      {
+        name: 'Mash bananas',
+        speed: 20, duration: 45,
+        ingredients: [
+          { name: 'Ripe Bananas',   grams: 75, color: '#ffe135' }
+        ]
+      },
+      {
+        name: 'Mix wet ingredients',
+        speed: 40, duration: 60,
+        ingredients: [
+          { name: 'Butter (melted)', grams: 20, color: '#f9d84b' },
+          { name: 'Honey',           grams: 20, color: '#ffa500' },
+          { name: 'Eggs',            grams: 25, color: '#ffd59e' },
+          { name: 'Vanilla Extract', grams: 2,  color: '#8b4513' }
+        ]
+      },
+      {
+        name: 'Fold in flour & spices',
+        speed: 20, duration: 60,
+        ingredients: [
+          { name: 'Whole Wheat Flour', grams: 48, color: '#c8a96e' },
+          { name: 'Baking Soda',       grams: 2,  color: '#fff' },
+          { name: 'Cinnamon',          grams: 2,  color: '#8b4513' }
+        ]
+      }
+    ]
+  }
+];
+
+function bmiCategory(bmi) {
+  if (bmi < 18.5) return 'underweight';
+  if (bmi < 25)   return 'normal';
+  if (bmi < 30)   return 'overweight';
+  return 'obese';
+}
+
+function recommendRecipes(bmi) {
+  const cat = bmiCategory(bmi);
+  const tagPriority = {
+    underweight: ['indulgent', 'classic'],
+    normal:      ['classic', 'low-fat', 'healthy'],
+    overweight:  ['low-fat', 'healthy', 'low-sugar'],
+    obese:       ['low-sugar', 'healthy', 'low-fat']
+  }[cat];
+
+  return [...RECIPES].sort((a, b) => {
+    const aScore = a.tags.reduce((s, t) => s + (tagPriority.indexOf(t) === -1 ? 99 : tagPriority.indexOf(t)), 0);
+    const bScore = b.tags.reduce((s, t) => s + (tagPriority.indexOf(t) === -1 ? 99 : tagPriority.indexOf(t)), 0);
+    return aScore - bScore;
+  });
+}
+
+const state = {
+  screen: 'splash',     
+  bmi: null,
+  recipe: null,
+  stageIdx: 0,
+  ingredientIdx: 0,
+  currentWeight: 0,
+  targetWeight: 0,
+  mixerStatus: 'idle',
+  mixerSpeed: 0,
+  connectionType: null, 
+  bleChar: { notify: null, write: null },
+  cameraStream: null,
+  cookTimer: null,
+  cookTimeLeft: 0,
+  cameraVerified: false,
+  manualDirection: 'fwd', // 'fwd' | 'rev'
+};
+
+async function connectBLE() {
+  const device = await navigator.bluetooth.requestDevice({
+    filters: [{ name: 'MixIt' }],
+    optionalServices: ['12345678-1234-1234-1234-123456789abc']
+  });
+  const server  = await device.gatt.connect();
+  const service = await server.getPrimaryService('12345678-1234-1234-1234-123456789abc');
+
+  state.bleChar.write  = await service.getCharacteristic('12345678-1234-1234-1234-123456789ab1');
+  state.bleChar.notify = await service.getCharacteristic('12345678-1234-1234-1234-123456789ab0');
+
+  await state.bleChar.notify.startNotifications();
+  state.bleChar.notify.addEventListener('characteristicvaluechanged', e => {
+    const text = new TextDecoder().decode(e.target.value);
+    handleIncoming(text);
+  });
+
+  device.addEventListener('gattserverdisconnected', () => {
+    state.connectionType = null;
+    updateConnectionBadge();
+  });
+
+  state.connectionType = 'ble';
+}
+
+function sendCommand(obj) {
+  const json = JSON.stringify(obj);
+  if (state.connectionType === 'ble' && state.bleChar.write) {
+    const enc = new TextEncoder().encode(json);
+    state.bleChar.write.writeValue(enc).catch(console.error);
+  }
+}
+
+function handleIncoming(raw) {
+  try {
+    const data = JSON.parse(raw);
+    if (data.weight !== undefined) {
+      state.currentWeight = data.weight;
+      state.mixerStatus   = data.status || 'idle';
+      state.mixerSpeed    = data.speed  || 0;
+      updateWeightDisplay();
+    }
+  } catch {}
+}
+
+async function startCamera() {
+  try {
+    state.cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    const video = document.getElementById('camera-feed');
+    if (video) { video.srcObject = state.cameraStream; video.play(); }
+  } catch { /* camera not available */ }
+}
+
+function stopCamera() {
+  if (state.cameraStream) {
+    state.cameraStream.getTracks().forEach(t => t.stop());
+    state.cameraStream = null;
+  }
+}
+
+const CLASS_NAMES = ['butter','cocoa','eggs','empty','flour','honey','milk','sugar','vanilla'];
+
+let aiModel = null;
+
+async function loadAIModel() {
+  try {
+    aiModel = await tf.loadLayersModel('./model/model.json');
+    console.log('MixIt AI model loaded');
+  } catch(e) {
+    console.warn('Could not load AI model:', e);
+  }
+}
+
+loadAIModel();
+
+async function aiVerifyIngredient(expectedName) {
+  if (!aiModel) {
+    console.warn('AI model not loaded yet');
+    return false;
+  }
+
+  const video = document.getElementById('camera-feed');
+  if (!video || video.readyState < 2) return false;
+
+  const tensor = tf.tidy(() =>
+    tf.browser.fromPixels(video)
+      .resizeBilinear([224, 224])
+      .toFloat()
+      .div(255.0)
+      .expandDims(0)
+  );
+
+  const predTensor = aiModel.predict(tensor);
+  const preds = await predTensor.data();
+  tensor.dispose();
+  predTensor.dispose();
+
+  const predsArr = Array.from(preds);
+  const topIdx   = predsArr.indexOf(Math.max(...predsArr));
+  const topName  = CLASS_NAMES[topIdx];
+  const topConf  = predsArr[topIdx];
+
+  // Log all predictions for debugging
+  const sorted = predsArr.map((p,i) => `${CLASS_NAMES[i]}:${(p*100).toFixed(1)}%`).sort((a,b) => parseFloat(b.split(':')[1]) - parseFloat(a.split(':')[1]));
+  console.log(`AI expected="${expectedName}" → top="${topName}" (${(topConf*100).toFixed(1)}%)`);
+  console.log('All:', sorted.join(', '));
+
+  const exp = expectedName.toLowerCase();
+  const expWord = exp.split(' ')[0];
+
+  // Match ingredient name more flexibly
+  const match =
+    exp.includes(topName) ||
+    topName.includes(expWord) ||
+    (expWord === 'unsalted' && topName === 'butter') ||
+    (expWord === 'caster' && topName === 'sugar') ||
+    (expWord === 'self-raising' && topName === 'flour') ||
+    (expWord === 'whole' && (topName === 'milk' || topName === 'flour')) ||
+    (expWord === 'ripe' && topName === 'empty') ||
+    (expWord === 'plain' && topName === 'flour') ||
+    (expWord === 'brown' && topName === 'sugar') ||
+    (expWord === 'baking' && (topName === 'flour' || topName === 'empty')) ||
+    (expWord === 'hot' && topName === 'milk') ||
+    (expWord === 'butter' && topName === 'butter') ||
+    (expWord === 'cocoa' && topName === 'cocoa') ||
+    (expWord === 'eggs' && topName === 'eggs') ||
+    (expWord === 'honey' && topName === 'honey') ||
+    (expWord === 'vanilla' && topName === 'vanilla') ||
+    (expWord === 'milk' && topName === 'milk') ||
+    (expWord === 'sugar' && topName === 'sugar') ||
+    (expWord === 'flour' && topName === 'flour');
+
+  return match && topConf > 0.40;
+}
+
+function currentStage()      { return state.recipe.stages[state.stageIdx]; }
+function currentIngredient() { return currentStage().ingredients[state.ingredientIdx]; }
+
+function isAllIngredientsAdded() {
+  return state.currentWeight >= currentIngredient().grams * 0.97;
+}
+
+async function advanceIngredient() {
+  const stage = currentStage();
+  state.ingredientIdx++;
+  if (state.ingredientIdx >= stage.ingredients.length) {
+      startMixingStage();
+  } else {
+    renderCookScreen();
+  }
+}
+
+function startMixingStage() {
+  const stage = currentStage();
+  state.screen = 'mixing';
+  state.cookTimeLeft = stage.duration;
+  sendCommand({ cmd: 'start', speed: stage.speed });
+  renderMixingScreen();
+
+  state.cookTimer = setInterval(() => {
+    state.cookTimeLeft--;
+    updateTimerDisplay();
+    if (state.cookTimeLeft <= 0) {
+      clearInterval(state.cookTimer);
+      sendCommand({ cmd: 'stop' });
+      state.stageIdx++;
+      if (state.stageIdx >= state.recipe.stages.length) {
+        showFinished();
+      } else {
+        state.ingredientIdx = 0;
+        sendCommand({ cmd: 'tare' });
+        state.screen = 'cook';
+        renderCookScreen();
+      }
+    }
+  }, 1000);
+}
+
+function showFinished() {
+  document.getElementById('app').innerHTML = finishedHTML();
+}
+
+function render() {
+  const app = document.getElementById('app');
+  switch (state.screen) {
+    case 'splash':  app.innerHTML = splashHTML();   break;
+    case 'bmi':     app.innerHTML = bmiHTML();      break;
+    case 'recipes': app.innerHTML = recipesHTML();  break;
+    case 'cook':    renderCookScreen();             break;
+    case 'mixing':  renderMixingScreen();           break;
+    case 'manual':  renderManualScreen();            break;
+  }
+  attachEventListeners();
+}
+
+function splashHTML() {
+  return `
+  <div class="screen splash-screen">
+    <div class="splash-bg"></div>
+    <div class="splash-content">
+      <div class="logo-ring">
+        <svg viewBox="0 0 120 120" class="logo-svg">
+          <circle cx="60" cy="60" r="54" fill="none" stroke="var(--accent)" stroke-width="3" stroke-dasharray="8 4" class="spin-slow"/>
+          <text x="50%" y="54%" dominant-baseline="middle" text-anchor="middle" font-size="48">🥣</text>
+        </svg>
+      </div>
+      <h1 class="brand">MixIt</h1>
+      <p class="tagline">AI-powered baking, precisely measured.</p>
+
+      <div class="connect-card">
+        <p class="connect-label">Connect to your mixer</p>
+        <button class="btn btn-secondary" id="btn-ble">
+          <span class="ble-icon">⬡</span> Connect via Bluetooth
+        </button>
+        <button class="btn btn-ghost" id="btn-skip">Continue(demo)</button>
+        <div class="divider"><span>or</span></div>
+        <button class="btn btn-secondary full-width" id="btn-manual">⚙️ Manual Mode</button>
+
+      </div>
+
+      <div id="conn-badge" class="conn-badge hidden"></div>
+    </div>
+  </div>`;
+}
+
+function bmiHTML() {
+  return `
+  <div class="screen bmi-screen">
+    <div class="bmi-deco"></div>
+    <div class="form-panel">
+      <button class="back-btn" id="btn-back">←</button>
+      <h2>Personalise Recipes</h2>
+      <p class="sub">Enter your details for tailored recommendations</p>
+
+      <div class="bmi-fields">
+        <div class="field-row">
+          <div class="field">
+            <label>Weight (kg)</label>
+            <input id="weight-kg" type="number" placeholder="70" min="30" max="250"/>
+          </div>
+          <div class="field">
+            <label>Height (cm)</label>
+            <input id="height-cm" type="number" placeholder="170" min="100" max="250"/>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>Age</label>
+            <input id="age" type="number" placeholder="30" min="10" max="100"/>
+          </div>
+          <div class="field">
+            <label>Sex</label>
+            <select id="sex">
+              <option value="m">Male</option>
+              <option value="f">Female</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div id="bmi-result" class="bmi-result hidden"></div>
+      <button class="btn btn-primary full-width" id="btn-calc-bmi">Calculate & Find Recipes</button>
+      <button class="btn btn-ghost full-width" id="btn-skip-bmi">Skip – show all recipes</button>
+    </div>
+  </div>`;
+}
+
+function recipesHTML() {
+  const list = state.bmi ? recommendRecipes(state.bmi) : RECIPES;
+  const cat  = state.bmi ? bmiCategory(state.bmi) : null;
+
+  return `
+  <div class="screen recipes-screen">
+    <div class="recipes-header">
+      <button class="back-btn" id="btn-back">←</button>
+      <h2>Choose a Recipe</h2>
+      ${cat ? `<span class="bmi-tag">${cat}</span>` : ''}
+    </div>
+
+    <div class="recipe-grid">
+      ${list.map(r => `
+        <div class="recipe-card" data-id="${r.id}">
+          <div class="recipe-emoji">${r.emoji}</div>
+          <div class="recipe-info">
+            <h3>${r.name}</h3>
+            <p>${r.cal_per_slice} kcal/slice · ${r.servings} servings</p>
+            <div class="recipe-tags">
+              ${r.tags.map(t => `<span class="tag">${t}</span>`).join('')}
+            </div>
+          </div>
+          <div class="recipe-stages">
+            ${r.stages.length} stage${r.stages.length > 1 ? 's' : ''}
+          </div>
+          <button class="btn btn-primary recipe-btn" data-id="${r.id}">Start →</button>
+        </div>
+      `).join('')}
+    </div>
+  </div>`;
+}
+
+function cookHTML() {
+  const stage = currentStage();
+  const ing   = currentIngredient();
+  const totalIngredients = state.recipe.stages.reduce((s,st) => s + st.ingredients.length, 0);
+  const doneIngredients  = state.recipe.stages.slice(0, state.stageIdx)
+    .reduce((s,st) => s + st.ingredients.length, 0) + state.ingredientIdx;
+  const progress = Math.round((doneIngredients / totalIngredients) * 100);
+
+  return `
+  <div class="screen cook-screen">
+    <div class="cook-header">
+      <button class="back-btn" id="btn-back">←</button>
+      <div class="cook-title">
+        <h2>${state.recipe.emoji} ${state.recipe.name}</h2>
+        <span class="stage-label">Stage ${state.stageIdx + 1}/${state.recipe.stages.length}: ${stage.name}</span>
+      </div>
+    </div>
+
+    <div class="progress-bar">
+      <div class="progress-fill" style="width:${progress}%"></div>
+    </div>
+
+    <div class="cook-body">
+      <!-- Camera panel -->
+      <div class="camera-panel">
+        <video id="camera-feed" autoplay playsinline muted></video>
+        <div class="camera-overlay" id="camera-overlay">
+          <div class="scan-box"></div>
+          <span class="scan-label">Detecting ingredient…</span>
+        </div>
+        <div id="verify-badge" class="verify-badge hidden"></div>
+      </div>
+
+      <!-- Ingredient info -->
+      <div class="ingredient-panel">
+        <div class="ingredient-color" style="background:${ing.color}"></div>
+        <div class="ingredient-details">
+          <h3 class="ingredient-name">${ing.name}</h3>
+          <p class="ingredient-target">Target: <strong>${ing.grams} g</strong></p>
+        </div>
+
+        <!-- Weight gauge -->
+        <div class="weight-gauge">
+          <div class="gauge-ring">
+            <svg viewBox="0 0 100 100" class="gauge-svg">
+              <circle cx="50" cy="50" r="40" fill="none" stroke="#222" stroke-width="8"/>
+              <circle cx="50" cy="50" r="40" fill="none" stroke="var(--accent)" stroke-width="8"
+                stroke-dasharray="${Math.min((state.currentWeight / ing.grams) * 251.2, 251.2)} 251.2"
+                stroke-dashoffset="62.8" stroke-linecap="round" class="gauge-arc" id="gauge-arc"/>
+            </svg>
+            <div class="gauge-value">
+              <span id="weight-display">${state.currentWeight.toFixed(1)}</span>
+              <small>g</small>
+            </div>
+          </div>
+        </div>
+
+        <div id="ai-status" class="ai-status">
+          <span class="ai-dot pulse"></span> Camera verifying ingredient…
+        </div>
+
+        <button class="btn btn-primary full-width" id="btn-verify" disabled>
+          Confirm & Add Next Ingredient
+        </button>
+        <button class="btn btn-ghost full-width" id="btn-tare">Tare Scale</button>
+      </div>
+
+      <!-- All ingredients for this stage -->
+      <div class="stage-overview">
+        <p class="stage-overview-label">This stage</p>
+        ${stage.ingredients.map((ig, i) => `
+          <div class="stage-ing ${i < state.ingredientIdx ? 'done' : i === state.ingredientIdx ? 'current' : ''}">
+            <div class="ing-dot" style="background:${ig.color}"></div>
+            <span>${ig.name}</span>
+            <span class="ing-g">${ig.grams}g</span>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  </div>`;
+}
+
+function mixingHTML() {
+  const stage = currentStage();
+  return `
+  <div class="screen mixing-screen">
+    <div class="mixing-bg">
+      <div class="orbit-ring r1"></div>
+      <div class="orbit-ring r2"></div>
+      <div class="orbit-ring r3"></div>
+    </div>
+    <div class="mixing-content">
+      <div class="mixing-icon">⚙️</div>
+      <h2>Mixing…</h2>
+      <p class="mixing-stage">${stage.name}</p>
+
+      <div class="timer-display" id="timer-display">
+        ${formatTime(state.cookTimeLeft)}
+      </div>
+
+      <div class="speed-control">
+        <p>Speed: <strong id="speed-label">${stage.speed}%</strong></p>
+        <input type="range" id="speed-slider" min="0" max="100" value="${stage.speed}" class="speed-slider"/>
+      </div>
+
+      <button class="btn btn-danger" id="btn-stop-mix">⏹ Stop</button>
+    </div>
+  </div>`;
+}
+
+
+function manualHTML() {
+  const running = state.mixerStatus === 'mixing';
+  const spd     = state.mixerSpeed || 0;
+  const dialPct = spd / 100;
+  const dialDash = dialPct * 251.2;
+  return `
+  <div class="screen manual-screen">
+    <div class="manual-header">
+      <button class="back-btn" id="btn-back">←</button>
+      <h2>Manual Mode</h2>
+      <span class="manual-tag">Direct Control</span>
+    </div>
+
+    <!-- Live Weight -->
+    <div class="manual-weight-card">
+      <span class="manual-weight-label">Live Weight</span>
+      <span class="manual-weight-value" id="manual-weight-display">${state.currentWeight.toFixed(1)}</span>
+      <span class="manual-weight-unit">grams</span>
+      <button class="manual-tare-btn" id="btn-manual-tare">⟳ Tare / Zero</button>
+    </div>
+
+    <!-- Servo Control -->
+    <div class="manual-servo-card">
+      <span class="manual-servo-title">⚙️ Servo Control</span>
+
+      <div class="servo-dial-wrap">
+        <div class="servo-dial">
+          <svg viewBox="0 0 100 100">
+            <circle cx="50" cy="50" r="40" fill="none" stroke="#222" stroke-width="8"/>
+            <circle cx="50" cy="50" r="40" fill="none"
+              stroke="${running ? 'var(--ok)' : 'var(--accent)'}" stroke-width="8"
+              stroke-dasharray="${dialDash} 251.2"
+              stroke-dashoffset="62.8" stroke-linecap="round"
+              id="manual-dial-arc" style="transform:rotate(-90deg);transform-origin:50% 50%;transition:stroke-dasharray 0.3s"/>
+          </svg>
+          <div class="servo-dial-value">
+            <span id="manual-speed-display">${spd}</span>
+            <small>% speed</small>
+          </div>
+        </div>
+      </div>
+
+      <div class="manual-speed-row">
+        <span style="font-size:12px;color:var(--muted);font-family:var(--mono)">0</span>
+        <input type="range" id="manual-speed-slider" min="0" max="100" value="${spd}" class="speed-slider"/>
+        <span style="font-size:12px;color:var(--muted);font-family:var(--mono)">100</span>
+      </div>
+
+      <div class="direction-toggle">
+        <button class="dir-btn ${state.manualDirection === 'fwd' ? 'active' : ''}" id="btn-dir-fwd">▶ Forward</button>
+        <button class="dir-btn ${state.manualDirection === 'rev' ? 'active' : ''}" id="btn-dir-rev">◀ Reverse</button>
+      </div>
+
+      <div class="servo-btn-row">
+        <button class="btn btn-primary" id="btn-manual-start">▶ Start</button>
+        <button class="btn btn-danger"  id="btn-manual-stop">⏹ Stop</button>
+      </div>
+
+      <div class="manual-status">
+        <div class="manual-status-dot ${running ? 'running' : ''}" id="manual-status-dot"></div>
+        <span id="manual-status-text">${running ? 'Running at ' + spd + '%' : 'Stopped'}</span>
+      </div>
+    </div>
+  </div>`;
+}
+
+function finishedHTML() {
+  return `
+  <div class="screen finished-screen">
+    <div class="confetti-bg"></div>
+    <div class="finished-content">
+      <div class="finished-icon">🎉</div>
+      <h2>Baking Complete!</h2>
+      <p>Your <strong>${state.recipe.name}</strong> is ready for the oven.</p>
+      <p class="tip">Pour batter into prepared tin and bake at 180°C for 25–30 min.</p>
+      <button class="btn btn-primary" id="btn-new-recipe">Bake Another →</button>
+    </div>
+  </div>`;
+}
+
+function renderCookScreen() {
+  document.getElementById('app').innerHTML = cookHTML();
+  attachEventListeners();
+  startCamera();
+  runAIVerification();
+}
+
+
+function renderManualScreen() {
+  document.getElementById('app').innerHTML = manualHTML();
+  attachEventListeners();
+  state._manualWeightInterval = setInterval(() => {
+    const el  = document.getElementById('manual-weight-display');
+    if (el) el.textContent = state.currentWeight.toFixed(1);
+  }, 200);
+}
+function renderMixingScreen() {
+  document.getElementById('app').innerHTML = mixingHTML();
+  attachEventListeners();
+}
+
+function updateWeightDisplay() {
+  const el = document.getElementById('weight-display');
+  if (!el) return;
+  el.textContent = state.currentWeight.toFixed(1);
+
+  const arc = document.getElementById('gauge-arc');
+  if (arc) {
+    const pct = Math.min(state.currentWeight / currentIngredient().grams, 1);
+    arc.setAttribute('stroke-dasharray', `${pct * 251.2} 251.2`);
+  }
+
+  const btn = document.getElementById('btn-verify');
+  if (btn && isAllIngredientsAdded() && state.cameraVerified) {
+    btn.disabled = false;
+    btn.classList.add('ready');
+  }
+}
+
+function updateTimerDisplay() {
+  const el = document.getElementById('timer-display');
+  if (el) el.textContent = formatTime(state.cookTimeLeft);
+}
+
+function updateConnectionBadge() {
+  const badge = document.getElementById('conn-badge');
+  if (!badge) return;
+  if (state.connectionType) {
+    badge.textContent = '✓ Connected via Bluetooth';
+    badge.className = 'conn-badge connected';
+  } else {
+    badge.className = 'conn-badge hidden';
+  }
+}
+
+async function runAIVerification() {
+  state.cameraVerified = false;
+  const overlay = document.getElementById('camera-overlay');
+  const badge   = document.getElementById('verify-badge');
+  const aiStatus = document.getElementById('ai-status');
+
+  if (overlay) overlay.style.display = 'flex';
+  const ok = await aiVerifyIngredient(currentIngredient().name);
+
+  if (overlay) overlay.style.display = 'none';
+  state.cameraVerified = ok;
+
+  if (badge) {
+    badge.className = `verify-badge ${ok ? 'ok' : 'fail'}`;
+    badge.textContent = ok ? '✓ Correct ingredient detected' : '✗ Ingredient not recognised – check bowl';
+  }
+  if (aiStatus) {
+    aiStatus.innerHTML = ok
+      ? '<span class="ai-dot ok"></span> Ingredient verified by AI'
+      : '<span class="ai-dot fail"></span> Verification failed – reposition ingredient';
+  }
+
+  if (ok && isAllIngredientsAdded()) {
+    const btn = document.getElementById('btn-verify');
+    if (btn) { btn.disabled = false; btn.classList.add('ready'); }
+  }
+}
+
+function formatTime(s) {
+  const m = Math.floor(s / 60).toString().padStart(2, '0');
+  const sec = (s % 60).toString().padStart(2, '0');
+  return `${m}:${sec}`;
+}
+
+function attachEventListeners() {
+
+  on('btn-manual', 'click', () => { state.screen = 'manual'; render(); });
+
+  on('btn-manual-tare', 'click', () => {
+    sendCommand({ cmd: 'tare' });
+    toast('Scale tared');
+  });
+
+  on('manual-speed-slider', 'input', e => {
+    const spd = parseInt(e.target.value);
+    state.mixerSpeed = spd;
+    const disp = document.getElementById('manual-speed-display');
+    const arc  = document.getElementById('manual-dial-arc');
+    const stat = document.getElementById('manual-status-text');
+    if (disp) disp.textContent = spd;
+    if (arc)  arc.setAttribute('stroke-dasharray', `${(spd/100)*251.2} 251.2`);
+    if (stat && state.mixerStatus === 'mixing') stat.textContent = `Running at ${spd}%`;
+    if (state.mixerStatus === 'mixing') sendCommand({ cmd: 'setSpeed', speed: spd });
+  });
+
+  on('btn-dir-fwd', 'click', () => {
+    state.manualDirection = 'fwd';
+    document.getElementById('btn-dir-fwd')?.classList.add('active');
+    document.getElementById('btn-dir-rev')?.classList.remove('active');
+  });
+
+  on('btn-dir-rev', 'click', () => {
+    state.manualDirection = 'rev';
+    document.getElementById('btn-dir-rev')?.classList.add('active');
+    document.getElementById('btn-dir-fwd')?.classList.remove('active');
+  });
+
+  on('btn-manual-start', 'click', () => {
+    const spd = state.mixerSpeed || 50;
+    sendCommand({ cmd: 'start', speed: spd, direction: state.manualDirection });
+    state.mixerStatus = 'mixing';
+    const dot  = document.getElementById('manual-status-dot');
+    const stat = document.getElementById('manual-status-text');
+    if (dot)  dot.classList.add('running');
+    if (stat) stat.textContent = `Running at ${spd}%`;
+    toast('Mixer started');
+  });
+
+  on('btn-manual-stop', 'click', () => {
+    sendCommand({ cmd: 'stop' });
+    state.mixerStatus = 'idle';
+    const dot  = document.getElementById('manual-status-dot');
+    const stat = document.getElementById('manual-status-text');
+    if (dot)  dot.classList.remove('running');
+    if (stat) stat.textContent = 'Stopped';
+    toast('Mixer stopped');
+  });
+
+  on('btn-ble', 'click', async () => {
+    if (!navigator.bluetooth) return toast('Bluetooth not available in this browser', true);
+    try {
+      showLoader('Scanning…');
+      await connectBLE();
+      hideLoader();
+      updateConnectionBadge();
+      toast('Connected via Bluetooth!');
+    } catch(e) { hideLoader(); toast(e.message, true); }
+  });
+
+  on('btn-skip', 'click', () => { state.screen = 'bmi'; render(); });
+  on('btn-back', 'click', () => {
+    stopCamera();
+    if (state.cookTimer) clearInterval(state.cookTimer);
+    if (state._manualWeightInterval) { clearInterval(state._manualWeightInterval); state._manualWeightInterval = null; }
+    const prev = { bmi:'splash', recipes:'bmi', cook:'recipes', mixing:'cook', manual:'splash' };
+    state.screen = prev[state.screen] || 'splash';
+    if (state.screen === 'cook') { state.screen = 'recipes'; }
+    render();
+  });
+
+  on('btn-calc-bmi', 'click', () => {
+    const w = parseFloat(document.getElementById('weight-kg')?.value);
+    const h = parseFloat(document.getElementById('height-cm')?.value) / 100;
+    if (!w || !h) return toast('Please enter weight and height');
+    state.bmi = w / (h * h);
+    const cat = bmiCategory(state.bmi);
+    const el  = document.getElementById('bmi-result');
+    if (el) {
+      el.className = `bmi-result show cat-${cat}`;
+      el.innerHTML = `BMI: <strong>${state.bmi.toFixed(1)}</strong> — <em>${cat}</em>`;
+    }
+    setTimeout(() => { state.screen = 'recipes'; render(); }, 800);
+  });
+
+  on('btn-skip-bmi', 'click', () => { state.screen = 'recipes'; render(); });
+
+  document.querySelectorAll('.recipe-btn').forEach(btn => {
+    btn.addEventListener('click', e => {
+      const id = e.target.dataset.id;
+      state.recipe       = RECIPES.find(r => r.id === id);
+      state.stageIdx     = 0;
+      state.ingredientIdx = 0;
+      state.screen       = 'cook';
+      sendCommand({ cmd: 'tare' });
+      renderCookScreen();
+    });
+  });
+
+  on('btn-verify', 'click', () => {
+    stopCamera();
+    advanceIngredient();
+  });
+
+  on('btn-tare', 'click', () => {
+    sendCommand({ cmd: 'tare' });
+    toast('Scale tared');
+  });
+
+  on('btn-stop-mix', 'click', () => {
+    if (state.cookTimer) clearInterval(state.cookTimer);
+    sendCommand({ cmd: 'stop' });
+    state.stageIdx++;
+    if (state.stageIdx >= state.recipe.stages.length) {
+      showFinished();
+    } else {
+      state.ingredientIdx = 0;
+      state.screen = 'cook';
+      renderCookScreen();
+    }
+  });
+
+  on('speed-slider', 'input', e => {
+    const spd = parseInt(e.target.value);
+    document.getElementById('speed-label').textContent = spd + '%';
+    sendCommand({ cmd: 'setSpeed', speed: spd });
+  });
+
+  on('btn-new-recipe', 'click', () => {
+    state.recipe = null;
+    state.stageIdx = 0;
+    state.screen = 'recipes';
+    render();
+  });
+}
+
+function on(id, event, fn) {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener(event, fn);
+}
+
+function toast(msg, err = false) {
+  let t = document.getElementById('toast');
+  if (!t) { t = document.createElement('div'); t.id = 'toast'; document.body.appendChild(t); }
+  t.textContent = msg;
+  t.className = 'toast ' + (err ? 'toast-err' : 'toast-ok');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => { t.className = 'toast'; }, 3000);
+}
+
+function showLoader(msg = 'Loading…') {
+  let el = document.getElementById('loader');
+  if (!el) { el = document.createElement('div'); el.id = 'loader'; document.body.appendChild(el); }
+  el.textContent = msg;
+  el.className = 'loader show';
+}
+
+function hideLoader() {
+  const el = document.getElementById('loader');
+  if (el) el.className = 'loader';
+}
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js').catch(() => {});
+}
+
+render();
+
+</script>
+</body>
+</html>
