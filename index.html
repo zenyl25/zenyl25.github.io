@@ -1097,7 +1097,10 @@ function cookHTML() {
           <span class="ai-dot pulse"></span> Camera verifying ingredient…
         </div>
 
-        <button class="btn btn-secondary full-width" id="btn-retry-ai" style="display:none">🔄 Retry Scan</button>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-secondary full-width" id="btn-retry-ai" style="display:none">🔄 Retry Scan</button>
+          <button class="btn btn-ghost full-width" id="btn-skip-ai" style="display:none">Skip ›</button>
+        </div>
 
         <button class="btn btn-primary full-width" id="btn-verify" disabled>
           Confirm & Add Next Ingredient
@@ -1301,7 +1304,9 @@ async function runAIVerification() {
     badge.className = `verify-badge ${ok ? 'ok' : 'fail'}`;
     badge.textContent = ok ? '✓ Correct ingredient detected' : '✗ Ingredient not recognised – check bowl';
   const retryBtn = document.getElementById('btn-retry-ai');
+  const skipBtn  = document.getElementById('btn-skip-ai');
   if (retryBtn) retryBtn.style.display = ok ? 'none' : 'flex';
+  if (skipBtn)  skipBtn.style.display  = ok ? 'none' : 'flex';
   }
   if (aiStatus) {
     aiStatus.innerHTML = ok
@@ -1428,6 +1433,22 @@ function attachEventListeners() {
   on('btn-verify', 'click', () => {
     stopCamera();
     advanceIngredient();
+  });
+
+  on('btn-skip-ai', 'click', () => {
+    state.cameraVerified = true;
+    const retryBtn = document.getElementById('btn-retry-ai');
+    const skipBtn  = document.getElementById('btn-skip-ai');
+    if (retryBtn) retryBtn.style.display = 'none';
+    if (skipBtn)  skipBtn.style.display  = 'none';
+    const badge = document.getElementById('verify-badge');
+    if (badge) { badge.className = 'verify-badge ok'; badge.textContent = '✓ Skipped'; }
+    const aiStatus = document.getElementById('ai-status');
+    if (aiStatus) aiStatus.innerHTML = '<span class="ai-dot ok"></span> Verification skipped';
+    if (isAllIngredientsAdded()) {
+      const btn = document.getElementById('btn-verify');
+      if (btn) { btn.disabled = false; btn.classList.add('ready'); }
+    }
   });
 
   on('btn-retry-ai', 'click', () => {
