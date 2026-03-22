@@ -823,14 +823,15 @@ async function loadAIModel() {
     console.log('ONNX model loaded');
   } catch(e) {
     console.warn('Could not load ONNX model:', e);
+    onnxSession = null;
   }
 }
 
 async function aiVerifyIngredient(expectedName) {
-  if (!onnxSession) return true;
+  if (!onnxSession) return false;
 
   const video = document.getElementById('camera-feed');
-  if (!video || video.readyState < 2) return true;
+  if (!video || video.readyState < 2) return false;
 
   const canvas = document.createElement('canvas');
   canvas.width = 224; canvas.height = 224;
@@ -852,7 +853,7 @@ async function aiVerifyIngredient(expectedName) {
   const topName = CLASS_NAMES[topIdx];
   const topConf = preds[topIdx];
 
-  console.log(`ONNX: expected="${expectedName}" → "${topName}" (${(topConf*100).toFixed(1)}%)`);
+  console.log(`ONNX: expected="${expectedName}" -> "${topName}" (${(topConf*100).toFixed(1)}%)`);
 
   const exp     = expectedName.toLowerCase();
   const expWord = exp.split(' ')[0];
