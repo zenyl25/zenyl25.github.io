@@ -10,7 +10,7 @@
   <link rel="manifest" href="manifest.json"/>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
-  
+  <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.17.3/dist/ort.min.js"></script>
   <style>
         :root {
       --bg:       #0a0a0a;
@@ -812,12 +812,62 @@ function stopCamera() {
   }
 }
 
+const CLASS_NAMES = ['butter','cocoa','eggs','empty','flour','honey','milk','sugar','vanilla'];
 
+let onnxSession = null;
 
-
+async function loadAIModel() {
+  try {
+    ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.17.3/dist/';
+    onnxSession = await ort.InferenceSession.create('./model/smartmixer_model.onnx');
+    console.log('ONNX model loaded');
+  } catch(e) {
+    console.warn('Could not load ONNX model:', e);
+  }
+}
 
 async function aiVerifyIngredient(expectedName) {
-  return true;
+  if (!onnxSession) return true;
+
+  const video = document.getElementById('camera-feed');
+  if (!video || video.readyState < 2) return true;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = 224; canvas.height = 224;
+  canvas.getContext('2d').drawImage(video, 0, 0, 224, 224);
+  const imageData = canvas.getContext('2d').getImageData(0, 0, 224, 224);
+
+  const input = new Float32Array(1 * 3 * 224 * 224);
+  for (let i = 0; i < 224 * 224; i++) {
+    input[i]             = imageData.data[i * 4]     / 255.0;
+    input[i + 224*224]   = imageData.data[i * 4 + 1] / 255.0;
+    input[i + 224*224*2] = imageData.data[i * 4 + 2] / 255.0;
+  }
+
+  const tensor  = new ort.Tensor('float32', input, [1, 3, 224, 224]);
+  const results = await onnxSession.run({ [onnxSession.inputNames[0]]: tensor });
+  const preds   = Array.from(results[onnxSession.outputNames[0]].data);
+
+  const topIdx  = preds.indexOf(Math.max(...preds));
+  const topName = CLASS_NAMES[topIdx];
+  const topConf = preds[topIdx];
+
+  console.log(`ONNX: expected="${expectedName}" → "${topName}" (${(topConf*100).toFixed(1)}%)`);
+
+  const exp     = expectedName.toLowerCase();
+  const expWord = exp.split(' ')[0];
+  const match =
+    exp.includes(topName) || topName.includes(expWord) ||
+    (expWord === 'unsalted'     && topName === 'butter') ||
+    (expWord === 'caster'       && topName === 'sugar')  ||
+    (expWord === 'self-raising' && topName === 'flour')  ||
+    (expWord === 'whole'        && (topName === 'milk' || topName === 'flour')) ||
+    (expWord === 'plain'        && topName === 'flour')  ||
+    (expWord === 'brown'        && topName === 'sugar')  ||
+    (expWord === 'ripe'         && topName === 'empty')  ||
+    (expWord === 'baking'       && topName === 'flour');
+
+  return match && topConf > 0.40;
 }
 
 function currentStage()      { return state.recipe.stages[state.stageIdx]; }
@@ -1180,6 +1230,7 @@ function renderCookScreen() {
   document.getElementById('app').innerHTML = cookHTML();
   attachEventListeners();
   startCamera();
+  loadAIModel();
   runAIVerification();
 }
 
