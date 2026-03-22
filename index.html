@@ -1097,6 +1097,8 @@ function cookHTML() {
           <span class="ai-dot pulse"></span> Camera verifying ingredient…
         </div>
 
+        <button class="btn btn-secondary full-width" id="btn-retry-ai" style="display:none">🔄 Retry Scan</button>
+
         <button class="btn btn-primary full-width" id="btn-verify" disabled>
           Confirm & Add Next Ingredient
         </button>
@@ -1298,6 +1300,8 @@ async function runAIVerification() {
   if (badge) {
     badge.className = `verify-badge ${ok ? 'ok' : 'fail'}`;
     badge.textContent = ok ? '✓ Correct ingredient detected' : '✗ Ingredient not recognised – check bowl';
+  const retryBtn = document.getElementById('btn-retry-ai');
+  if (retryBtn) retryBtn.style.display = ok ? 'none' : 'flex';
   }
   if (aiStatus) {
     aiStatus.innerHTML = ok
@@ -1424,6 +1428,12 @@ function attachEventListeners() {
   on('btn-verify', 'click', () => {
     stopCamera();
     advanceIngredient();
+  });
+
+  on('btn-retry-ai', 'click', () => {
+    const retryBtn = document.getElementById('btn-retry-ai');
+    if (retryBtn) retryBtn.style.display = 'none';
+    runAIVerification();
   });
 
   on('btn-tare', 'click', () => {
